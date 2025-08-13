@@ -19,6 +19,7 @@
       max-width: 90vw;
       max-height: 90vh;
       cursor: pointer;
+      -webkit-user-select: none; /* Safari/iOS */
       user-select: none;
     }
   </style>
@@ -32,19 +33,32 @@
     (function () {
       var audio = document.getElementById('fishSound');
       var img = document.getElementById('fishImage');
-
-      function playSound() {
-        try {
-          audio.currentTime = 0;
-          var p = audio.play();
-          if (p && typeof p.catch === 'function') {
-            p.catch(function () { /* ignore play errors (e.g., user gesture policies) */ });
+      function playSound(ev) {
+        if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+        var attempt = function () {
+          try {
+            audio.currentTime = 0;
+            var p = audio.play();
+            if (p && typeof p.catch === 'function') {
+              p.catch(function () {});
+            }
+          } catch (e) {
+            // As a fallback, force reload then retry
+            try { audio.load(); } catch (_) {}
+            setTimeout(function () {
+              try { audio.currentTime = 0; audio.play().catch(function () {}); } catch (e2) {}
+            }, 0);
           }
-        } catch (e) { /* noop */ }
+        };
+
+        attempt();
       }
 
-      img.addEventListener('click', playSound);
-      img.addEventListener('touchend', playSound, { passive: true });
+      // Use a single pointer event to avoid duplicate click/touch triggers
+      img.addEventListener('pointerup', playSound);
+
+      // Prevent context menu on long-press which may interfere with gesture
+      img.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     })();
   </script>
   
